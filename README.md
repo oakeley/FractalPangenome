@@ -25,7 +25,7 @@ This system transforms genomic data into a navigable "street map" where individu
 
 ```bash
 # Clone the repository
-git clone [https://github.com/oakeley/FractalPangenome.git](https://github.com/oakeley/FractalPangenome.git)
+git clone https://github.com/oakeley/FractalPangenome.git
 cd FractalPangenome
 
 # Install Python dependencies
