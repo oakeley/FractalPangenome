@@ -1,0 +1,494 @@
+# genome_db_config.yaml
+# Configuration file for the Fractal Pangenome Database System
+
+# Neo4j Configuration
+neo4j:
+  container_name: "neo4j-genomics"
+  neo4j_version: "5.15-community"
+  data_dir: "./neo4j_data"
+  memory:
+    heap_initial: "4G"
+    heap_max: "8G"
+    pagecache: "4G"
+  auth:
+    user: "neo4j"
+    password: "genomics123"
+  ports:
+    bolt: 7687
+    http: 7474
+
+# Genome Download Configuration
+download:
+  download_dir: "./reference_genomes"
+  max_concurrent_downloads: 3
+  chunk_size: 8192
+  verify_checksums: true
+
+# Genome Processing Configuration
+processing:
+  segment_size: 10000        # Base segment size for nucleotide level
+  kmer_size: 31             # K-mer size for indexing
+  batch_size: 1000          # Batch size for database imports
+  max_workers: 8            # Number of parallel workers
+  compression_level: 6      # Gzip compression level
+
+# Short Read Mapping Configuration
+mapping:
+  min_kmer_matches: 5       # Minimum k-mer matches for candidate nodes
+  min_mapping_score: 0.8    # Minimum alignment score
+  max_alignments_per_read: 10  # Maximum alignments to return per read
+  path_reconstruction:
+    max_path_length: 50     # Maximum path length for reconstruction
+    min_node_frequency: 0.01  # Minimum node frequency for path inclusion
+
+# Database Performance Configuration
+database:
+  transaction_timeout: "300s"
+  max_concurrent_transactions: 1000
+  checkpoint_interval: "300s"
+  query_timeout: "120s"
+  
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/genome_db.log"
+  max_file_size: "100MB"
+  backup_count: 5
+
+# Public Genome Sources
+public_genomes:
+  references:
+    GRCh38:
+      url: "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/GCA_000001405.15_GRCh38_genomic.fna.gz"
+      description: "Human reference genome GRCh38"
+      checksum: "md5:c4c2fb71c5c5b0c2b1c0c1b9b6c8c1c2"
+      individual_id: "GRCh38_reference"
+      
+    T2T-CHM13:
+      url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz"
+      description: "Telomere-to-telomere CHM13 assembly"
+      checksum: "md5:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+      individual_id: "CHM13"
+      
+  diverse_assemblies:
+    HG002_maternal:
+      url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/HPRC/HG002/assemblies/year1_f1_assembly_v2_genbank/HG002.maternal.f1_assembly_v2_genbank.fa.gz"
+      description: "HG002 maternal haplotype assembly"
+      individual_id: "HG002"
+      haplotype: 0
+      
+    HG002_paternal:
+      url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/HPRC/HG002/assemblies/year1_f1_assembly_v2_genbank/HG002.paternal.f1_assembly_v2_genbank.fa.gz"
+      description: "HG002 paternal haplotype assembly"
+      individual_id: "HG002"
+      haplotype: 1
+      
+    HG00733_maternal:
+      url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/HPRC/HG00733/assemblies/year1_f1_assembly_v2_genbank/HG00733.maternal.f1_assembly_v2_genbank.fa.gz"
+      description: "HG00733 maternal haplotype (Puerto Rican ancestry)"
+      individual_id: "HG00733"
+      haplotype: 0
+      
+    HG00733_paternal:
+      url: "https://s3-us-west-2.amazonaws.com/human-pangenomics/HPRC/HG00733/assemblies/year1_f1_assembly_v2_genbank/HG00733.paternal.f1_assembly_v2_genbank.fa.gz"
+      description: "HG00733 paternal haplotype (Puerto Rican ancestry)"
+      individual_id: "HG00733"
+      haplotype: 1
+
+# Quality Control Configuration
+quality_control:
+  assembly_metrics:
+    min_contig_length: 1000
+    max_n_content: 0.05     # Maximum 5% N content
+    min_coverage: 10        # Minimum sequencing coverage
+    
+  read_filtering:
+    min_read_length: 50
+    max_read_length: 300
+    min_quality_score: 20
+    trim_adapters: true
+    
+  validation:
+    check_checksums: true
+    verify_sequence_integrity: true
+    validate_chromosome_names: true
+
+---
+# docker-compose.yml
+# Docker Compose configuration for the complete genomics stack
+
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: neo4j-genomics
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/genomics123
+      - NEO4J_PLUGINS=["graph-data-science", "apoc"]
+      - NEO4J_dbms_memory_heap_initial__size=4G
+      - NEO4J_dbms_memory_heap_max__size=8G
+      - NEO4J_dbms_memory_pagecache_size=4G
+      - NEO4J_dbms_default__listen__address=0.0.0.0
+      - NEO4J_dbms_connector_bolt_listen__address=:7687
+      - NEO4J_dbms_connector_http_listen__address=:7474
+      - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+      - NEO4J_dbms_transaction_timeout=300s
+      - NEO4J_dbms_transaction_concurrent_maximum=1000
+    volumes:
+      - ./neo4j_data/data:/data
+      - ./neo4j_data/logs:/logs
+      - ./neo4j_data/import:/var/lib/neo4j/import
+      - ./neo4j_data/plugins:/plugins
+      - ./neo4j_config:/conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-genomics
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --save 60 1000
+    volumes:
+      - ./redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: influxdb-genomics
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=genomics123
+      - DOCKER_INFLUXDB_INIT_ORG=genomics
+      - DOCKER_INFLUXDB_INIT_BUCKET=annotations
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=genomics-secret-token
+    volumes:
+      - ./influxdb_data:/var/lib/influxdb2
+      - ./influxdb_config:/etc/influxdb2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  genome-processor:
+    build:
+      context: .
+      dockerfile: Dockerfile.genome-processor
+    container_name: genome-processor
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./reference_genomes:/app/reference_genomes
+      - ./custom_genomes:/app/custom_genomes
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=genomics123
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=genomics-secret-token
+      - INFLUX_ORG=genomics
+      - INFLUX_BUCKET=annotations
+    restart: unless-stopped
+    command: ["python", "-m", "genome_processor", "--config", "/app/config/genome_db_config.yaml"]
+
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter-genomics
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./reference_genomes:/home/jovyan/work/data/reference_genomes
+      - ./custom_genomes:/home/jovyan/work/data/custom_genomes
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=genomics
+    restart: unless-stopped
+
+  monitoring:
+    image: grafana/grafana:latest
+    container_name: grafana-genomics
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=genomics123
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - ./grafana_config:/etc/grafana/provisioning
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  redis_data:
+  influxdb_data:
+  grafana_data:
+
+networks:
+  default:
+    name: genomics-network
+
+---
+# Dockerfile.genome-processor
+# Dockerfile for the genome processing application
+
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    wget \
+    git \
+    libhdf5-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    liblzma-dev \
+    libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/reference_genomes /app/custom_genomes /app/config
+
+# Set Python path
+ENV PYTHONPATH=/app
+
+# Create non-root user
+RUN useradd -m -u 1000 genomics && chown -R genomics:genomics /app
+USER genomics
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
+
+# Default command
+CMD ["python", "-m", "genome_processor"]
+
+---
+# requirements.txt
+# Python dependencies for the genome database system
+
+# Core dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+
+# Bioinformatics
+biopython>=1.81
+pysam>=0.21.0
+pyBigWig>=0.3.18
+
+# Database connections
+neo4j>=5.15.0
+redis>=4.5.0
+influxdb-client>=1.36.0
+
+# Async and networking
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+asyncio-throttle>=1.0.0
+
+# Docker and containers
+docker>=6.0.0
+
+# Data processing
+polars>=0.20.0
+pyarrow>=12.0.0
+
+# Configuration and serialization
+pyyaml>=6.0
+toml>=0.10.0
+click>=8.1.0
+
+# Utilities
+tqdm>=4.65.0
+rich>=13.0.0
+loguru>=0.7.0
+
+# Scientific computing
+numba>=0.57.0
+dask>=2023.5.0
+
+# Visualization (optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Development
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.4.0
+
+---
+# setup.py
+# Setup script for the genome database package
+
+from setuptools import setup, find_packages
+
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
+with open("requirements.txt", "r", encoding="utf-8") as fh:
+    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+
+setup(
+    name="fractal-pangenome-db",
+    version="0.1.0",
+    author="Genome Database Team",
+    author_email="genomics@example.com",
+    description="Fractal pangenome database with Hilbert curve indexing",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/genomics/fractal-pangenome-db",
+    packages=find_packages(),
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Science/Research",
+        "Topic :: Scientific/Engineering :: Bio-Informatics",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+    ],
+    python_requires=">=3.9",
+    install_requires=requirements,
+    extras_require={
+        "dev": [
+            "pytest>=7.4.0",
+            "pytest-asyncio>=0.21.0",
+            "pytest-cov>=4.1.0",
+            "black>=23.0.0",
+            "isort>=5.12.0",
+            "flake8>=6.0.0",
+            "mypy>=1.4.0",
+        ],
+        "docs": [
+            "sphinx>=7.0.0",
+            "sphinx-rtd-theme>=1.3.0",
+            "myst-parser>=2.0.0",
+        ],
+        "gpu": [
+            "cupy-cuda11x>=12.0.0",
+            "rapids-cudf>=23.06",
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "genome-db=genome_processor.cli:main",
+            "import-genome=genome_processor.import_cli:main",
+            "map-reads=genome_processor.mapping_cli:main",
+        ],
+    },
+    include_package_data=True,
+    package_data={
+        "genome_processor": [
+            "config/*.yaml",
+            "schemas/*.json",
+            "templates/*.cypher",
+        ],
+    },
+)
+
+---
+# .env.example
+# Environment variables template
+
+# Neo4j Configuration
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=genomics123
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_DB=0
+
+# InfluxDB Configuration
+INFLUX_URL=http://localhost:8086
+INFLUX_TOKEN=genomics-secret-token
+INFLUX_ORG=genomics
+INFLUX_BUCKET=annotations
+
+# Processing Configuration
+MAX_WORKERS=8
+SEGMENT_SIZE=10000
+KMER_SIZE=31
+BATCH_SIZE=1000
+
+# Storage Paths
+REFERENCE_GENOMES_DIR=./reference_genomes
+CUSTOM_GENOMES_DIR=./custom_genomes
+LOGS_DIR=./logs
+CONFIG_DIR=./config
+
+# Performance Tuning
+NEO4J_HEAP_SIZE=8G
+NEO4J_PAGECACHE_SIZE=4G
+REDIS_MAXMEMORY=2gb
+
+# Security (Change in production!)
+JWT_SECRET=change-this-secret-key
+API_KEY=genomics-api-key-change-me
+
+# External Services
+NCBI_API_KEY=your-ncbi-api-key
+ENSEMBL_API_URL=https://rest.ensembl.org
+UCSC_API_URL=https://api.genome.ucsc.edu
+
+# Monitoring
+GRAFANA_ADMIN_PASSWORD=genomics123
+JUPYTER_TOKEN=genomics
+
+# Development
+DEBUG=false
+LOG_LEVEL=INFO
+TESTING=false

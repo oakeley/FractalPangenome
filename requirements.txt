@@ -1,0 +1,77 @@
+# Core Python packages
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+
+# Async and networking
+asyncio-throttle>=1.0.0
+aiohttp>=3.8.0
+aiofiles>=23.0.0
+
+# Database drivers
+neo4j>=5.15.0
+redis>=4.5.0
+influxdb-client>=1.36.0
+
+# Web framework and API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.0
+python-multipart>=0.0.6
+
+# CLI and UI
+click>=8.1.0
+rich>=13.0.0
+typer>=0.9.0
+
+# Data processing
+polars>=0.20.0
+pyarrow>=12.0.0
+
+# Scientific computing
+scikit-learn>=1.3.0
+networkx>=3.1
+numba>=0.57.0
+
+# Bioinformatics
+biopython>=1.81
+pysam>=0.21.0
+cyvcf2>=0.30.0
+pybedtools>=0.9.0
+pyBigWig>=0.3.18
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Configuration and serialization
+pyyaml>=6.0.1
+toml>=0.10.0
+
+# System monitoring
+psutil>=5.9.0
+
+# Docker integration
+docker>=6.0.0
+
+# Utilities
+tqdm>=4.65.0
+pathlib>=1.0.1
+hashlib>=1.0.0
+tempfile>=1.0.0
+logging>=0.4.9.6
+
+# Web scraping and HTTP
+requests>=2.31.0
+
+# Testing (optional but recommended)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+
+# Development tools (optional)
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.5.0
