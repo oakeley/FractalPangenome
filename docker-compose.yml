@@ -1,32 +1,56 @@
-version: '3.8'
+# Fractal Pangenome Database - Docker Compose Configuration
+# Improved version with better error handling and modern syntax
 
 services:
   neo4j:
     image: neo4j:5.15-community
     container_name: neo4j-genomics
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
     environment:
       - NEO4J_AUTH=neo4j/genomics123
       - NEO4J_PLUGINS=["graph-data-science", "apoc"]
       - NEO4J_dbms_memory_heap_initial__size=4G
       - NEO4J_dbms_memory_heap_max__size=8G
       - NEO4J_dbms_memory_pagecache_size=4G
+      - NEO4J_dbms_default__listen__address=0.0.0.0
+      - NEO4J_dbms_connector_bolt_listen__address=:7687
+      - NEO4J_dbms_connector_http_listen__address=:7474
+      - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+      - NEO4J_dbms_transaction_timeout=300s
+      - NEO4J_dbms_transaction_concurrent_maximum=1000
     volumes:
-      - ./neo4j_data/data:/data
-      - ./neo4j_data/logs:/logs
-      - ./neo4j_data/import:/var/lib/neo4j/import
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - genomics-network
 
   redis:
     image: redis:7-alpine
     container_name: redis-genomics
     ports:
       - "6379:6379"
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --save 60 1000
     volumes:
-      - ./redis_data:/data
+      - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - genomics-network
 
   influxdb:
     image: influxdb:2.7-alpine
@@ -39,9 +63,17 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=genomics123
       - DOCKER_INFLUXDB_INIT_ORG=genomics
       - DOCKER_INFLUXDB_INIT_BUCKET=annotations
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=genomics-secret-token
     volumes:
-      - ./influxdb_data:/var/lib/influxdb2
+      - influxdb_data:/var/lib/influxdb2
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - genomics-network
 
   grafana:
     image: grafana/grafana:latest
@@ -50,6 +82,52 @@ services:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=genomics123
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
     volumes:
-      - ./grafana_data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
     restart: unless-stopped
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - genomics-network
+
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    container_name: jupyter-genomics
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./reference_genomes:/home/jovyan/work/data/reference_genomes:ro
+      - ./custom_genomes:/home/jovyan/work/data/custom_genomes:ro
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=genomics
+      - GRANT_SUDO=yes
+    restart: unless-stopped
+    user: root
+    command: "start-notebook.sh --NotebookApp.token='genomics' --NotebookApp.password='' --NotebookApp.allow_root=True"
+    networks:
+      - genomics-network
+
+volumes:
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  neo4j_import:
+    driver: local
+  neo4j_plugins:
+    driver: local
+  redis_data:
+    driver: local
+  influxdb_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  genomics-network:
+    driver: bridge
+    name: genomics-network

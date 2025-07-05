@@ -28,6 +28,10 @@ This system transforms genomic data into a navigable "street map" where individu
 git clone https://github.com/oakeley/FractalPangenome.git
 cd FractalPangenome
 
+# Setup environment
+conda create -n pangenome python=3.9
+conda activate pangenome
+
 # Install Python dependencies
 pip install -r requirements.txt
 
@@ -51,6 +55,19 @@ This will start:
 - **InfluxDB** (temporal annotations) on port 8086
 - **Grafana** (monitoring) on port 3000
 - **Jupyter** (analysis) on port 8888
+
+### 2a. Clean up Docker (if you get errors)
+
+```bash
+# From your project directory
+docker-compose down --volumes --remove-orphans
+
+# Remove any stale networks
+docker network prune -f
+
+# Now try starting again
+docker-compose up -d
+```
 
 ### 3. Import Reference Genomes
 
