@@ -65,7 +65,7 @@ class DockerNeo4jManager:
         self.docker_client = docker.from_env()
         self.neo4j_uri = "bolt://localhost:7687"
         self.neo4j_user = "neo4j"
-        self.neo4j_password = "genomics123"
+        self.neo4j_password = os.getenv('NEO4J_PASSWORD', 'genomics123')
         self.container = None
         
     def setup_neo4j_container(self) -> bool:

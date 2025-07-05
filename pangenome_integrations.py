@@ -21,6 +21,11 @@ from dataclasses import dataclass
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import threading
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Production Database Integrations
 class Neo4jPangenomeStore:
@@ -517,7 +522,7 @@ async def demo_production_system():
         'neo4j': {
             'uri': 'bolt://localhost:7687',
             'user': 'neo4j',
-            'password': 'password'
+            'password': os.getenv('NEO4J_PASSWORD', 'genomics123')
         },
         'influxdb': {
             'url': 'http://localhost:8086',

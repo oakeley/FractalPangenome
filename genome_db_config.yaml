@@ -1,0 +1,10 @@
+download:
+  download_dir: ./reference_genomes
+neo4j:
+  container_name: neo4j-genomics
+  data_dir: ./neo4j_data
+  neo4j_version: 5.15-community
+processing:
+  batch_size: 1000
+  kmer_size: 31
+  segment_size: 10000

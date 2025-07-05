@@ -73,10 +73,10 @@ docker-compose up -d
 
 ```bash
 # List available public genomes
-python -m genome_cli import public --list-sources
+python -m genome_cli import-cmd public --list-sources
 
 # Import reference genomes
-python -m genome_cli import public \
+python -m genome_cli import-cmd public \
   --source T2T-CHM13 \
   --source HG002_maternal \
   --source HG002_paternal
@@ -86,7 +86,7 @@ python -m genome_cli import public \
 
 ```bash
 # Import diploid genome from FASTA files
-python -m genome_cli import diploid \
+python -m genome_cli import-cmd diploid \
   --individual-id "patient_001" \
   --maternal /path/to/maternal.fa \
   --paternal /path/to/paternal.fa \
@@ -111,7 +111,7 @@ python -m genome_cli query region \
 
 ```bash
 # Map Illumina reads to find genomic paths
-python -m genome_cli map reads \
+python -m genome_cli map-reads \
   --fastq /path/to/reads.fastq \
   --chromosome 1 \
   --start 1000000 \
