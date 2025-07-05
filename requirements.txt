@@ -58,9 +58,6 @@ docker>=6.0.0
 # Utilities
 tqdm>=4.65.0
 pathlib>=1.0.1
-hashlib>=1.0.0
-tempfile>=1.0.0
-logging>=0.4.9.6
 
 # Web scraping and HTTP
 requests>=2.31.0
